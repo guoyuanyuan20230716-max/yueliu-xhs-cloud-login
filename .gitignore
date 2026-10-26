@@ -1,0 +1,4 @@
+data/
+cookies.json
+*.zip
+.env

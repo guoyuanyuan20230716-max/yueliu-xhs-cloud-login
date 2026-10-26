@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>���� �� �ƶ˵�¼</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#182432;font:16px/1.6 system-ui,sans-serif}main{max-width:1160px;margin:auto;padding:24px}h1{font-size:28px;margin:0}p{margin:8px 0}section{background:white;border:1px solid #d9e0e7;border-radius:12px;padding:18px;margin:16px 0}label{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}input,button{font:inherit;padding:10px 14px;border:1px solid #bac6d1;border-radius:8px}button{background:#fff;cursor:pointer}button.primary{background:#135b75;color:white;border-color:#135b75}button:disabled{opacity:.45;cursor:wait}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}.muted{color:#536477;font-size:14px}#status{font-weight:600;white-space:pre-wrap}#screen{display:block;width:100%;height:auto;border:1px solid #c8d0d9;cursor:crosshair;touch-action:manipulation}#screen[hidden]{display:none}#notice{color:#9b3e00}input[type=password]{max-width:100%;min-width:230px}.frame{overflow:auto}#placeholder{padding:50px 15px;text-align:center;background:#eef2f5}code{font-size:13px}button:focus-visible,input:focus-visible{outline:3px solid #58a4c1;outline-offset:2px}
+</style>
+<main>
+ <h1>���� �� �ƶ˵�¼</h1>
+ <p>���� Render �ϵ�С�����¼ҳ�棬���ɨ��Ͷ�����֤��</p>
+ <section id="connect">
+  <label>���������Կ <input id="token" type="password" autocomplete="off" spellcheck="false"></label>
+  <button class="primary" id="start">���ӵ�¼�Ự</button>
+  <p class="muted">��Կ�������ڵ�ǰҳ���ڴ��С���֤�������·����������룬����Ҫ���������С�</p>
+ </section>
+ <section>
+  <p id="status" role="status" aria-live="polite">��δ����</p>
+  <p id="notice" role="alert"></p>
+  <p class="muted" id="expiry"></p>
+  <div class="row">
+   <button id="refresh" disabled>ˢ���ƶ˻���</button>
+   <button id="close" disabled>�����Ự</button>
+   <label><input id="auto" type="checkbox">ÿ 8 ��ˢ�»���</label>
+  </div>
+  <p class="muted">��������е�����������·����������֤�룻��������е�ȷ�ϰ�ť�����֤�������ǽ�ͼ����ˢ�²��ܿ����仯��</p>
+  <div class="frame"><div id="placeholder">���Ӻ���������ʾ�ƶ����������</div><img id="screen" hidden alt="�ɵ��������С�����ƶ˵�¼����"></div>
+  <div class="row">
+   <label>���뵽��ѡ�еĿ� <input id="entry" type="password" autocomplete="off" maxlength="128" placeholder="������֤����¼�����ı�"></label>
+   <button id="send" disabled>���뵽�ƶ�</button>
+  </div>
+  <div class="row" id="keys">
+   <button data-key="Backspace" disabled>�˸�</button><button data-key="Tab" disabled>��һ�������</button><button data-key="Enter" disabled>�س�</button><button data-key="Escape" disabled>Esc</button>
+   <button id="up" disabled>���Ϲ���</button><button id="down" disabled>���¹���</button>
+  </div>
+  <button class="primary" id="save" disabled>�������֤����鲢�����¼</button>
+  <p class="muted">�Ự��ౣ�� 10 ���ӡ�����ɹ����������رա����ʵ�������Կ��ܶ�ʧ��¼״̬����ҳ�в���������Զ�ͬ����</p>
+ </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let session='',secret='',busy=false,phase='idle',imageURL='',lastFrame=0;
+function controls(){const ready=phase==='ready'&&!busy;['refresh','send','save','up','down'].forEach(id=>$(id).disabled=!ready);document.querySelectorAll('[data-key]').forEach(b=>b.disabled=!ready);$('close').disabled=busy||!session||phase==='starting';$('start').disabled=busy||phase==='starting'||phase==='ready';}
+async function request(path,body){
+ const res=await fetch('/api/v1/login-console'+path,{method:body===undefined?'GET':'POST',headers:{'Authorization':'Bearer '+secret,'X-Login-Session':session,...(body===undefined?{}:{'Content-Type':'application/json'})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal:AbortSignal.timeout(25000)});
+ if(!res.ok){let d;try{d=await res.json()}catch{}throw Error(d?.error||'����ʧ�� HTTP '+res.status)}
+ return path==='/frame'?res.blob():res.json();
+}
+function showState(s){phase=s.status;const names={starting:'���������ƶ������',ready:'��¼�Ự�Ѿ���',saved:'��¼��ȷ�ϲ�����',closed:'�Ự�ѽ���',expired:'�Ự�ѹ���',error:'���������ʧ��',idle:'��δ����'};$('status').textContent=names[phase]||phase;$('notice').textContent=s.note||'';$('expiry').textContent=s.expires_at?'�Ự��ֹ��'+new Date(s.expires_at).toLocaleString():'';if(phase!=='ready'){clearFrame()}controls();}
+function clearFrame(){if(imageURL){URL.revokeObjectURL(imageURL);imageURL=''}$('screen').hidden=true;$('placeholder').hidden=false;}
+async function frame(){const blob=await request('/frame');if(imageURL)URL.revokeObjectURL(imageURL);imageURL=URL.createObjectURL(blob);$('screen').src=imageURL;$('screen').hidden=false;$('placeholder').hidden=true;lastFrame=Date.now();}
+async function run(fn){if(busy)return;busy=true;$('notice').textContent='';controls();try{await fn()}catch(e){$('notice').textContent=e.name==='TimeoutError'?'����ʱ����ˢ�²鿴״̬����Ҫ�ظ��ύ��֤�롣':e.message}finally{busy=false;controls()}}
+$('start').onclick=()=>run(async()=>{secret=$('token').value.trim();if(!secret)throw Error('����������������Կ');const s=await request('/start',{});session=s.session;showState(s);$('token').value='';if(phase==='ready')await frame()});
+$('refresh').onclick=()=>run(async()=>{showState(await request('/state'));if(phase==='ready')await frame()});
+$('close').onclick=()=>run(async()=>showState(await request('/close',{})));
+$('save').onclick=()=>run(async()=>showState(await request('/save',{})));
+async function action(body){await request('/action',body);await frame();}
+$('screen').onclick=e=>run(async()=>{if(phase!=='ready')return;const r=e.target.getBoundingClientRect();const x=(e.clientX-r.left)*1100/r.width,y=(e.clientY-r.top)*820/r.height;await action({kind:'click',x,y})});
+$('send').onclick=()=>run(async()=>{const text=$('entry').value;if(!text)throw Error('��������֤����ı�');$('entry').value='';await action({kind:'text',text})});
+document.querySelectorAll('[data-key]').forEach(b=>b.onclick=()=>run(()=>action({kind:'key',key:b.dataset.key})));
+$('up').onclick=()=>run(()=>action({kind:'scroll',delta:-400}));$('down').onclick=()=>run(()=>action({kind:'scroll',delta:400}));
+setInterval(()=>{if(!session||busy||document.hidden)return;if(phase==='starting')run(async()=>{showState(await request('/state'));if(phase==='ready')await frame()});else if(phase==='ready'&&$('auto').checked&&Date.now()-lastFrame>=8000)run(async()=>{showState(await request('/state'));if(phase==='ready')await frame()})},3000);
+window.addEventListener('pagehide',()=>{secret='';$('entry').value='';clearFrame()});
+</script>
+</html>

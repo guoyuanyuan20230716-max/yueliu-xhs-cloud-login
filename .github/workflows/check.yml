@@ -1,0 +1,25 @@
+name: Check login console
+on: [push, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Compile and test against pinned upstream
+        run: |
+          git init /tmp/xhs-build
+          cd /tmp/xhs-build
+          git remote add origin https://github.com/xpzouying/xiaohongshu-mcp.git
+          git fetch --depth=1 origin 7797fd375aba02dcd33afe143f6bee13e5870859
+          git checkout --detach FETCH_HEAD
+          cp "$GITHUB_WORKSPACE"/login_console.go "$GITHUB_WORKSPACE"/login_console.html "$GITHUB_WORKSPACE"/login_console_test.go .
+          sed -i '/router.GET("\/health", healthHandler)/a\ registerLoginConsole(router, appServer)' routes.go
+          gofmt -w login_console.go login_console_test.go routes.go
+          go test . -run '^TestConsole' -count=1
+          go vet .
+          go build -o /tmp/xhs-console .
