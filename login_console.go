@@ -104,9 +104,10 @@ func registerLoginConsole(router *gin.Engine, app *AppServer) {
   if !consoleOriginAllowed(info.URL) { consoleError(c,403,"当前页面不属于小红书，请关闭会话后重试"); c.Abort(); return }
  })
  api.GET("/frame",func(c *gin.Context) {
-  data,err := s.page.Timeout(15*time.Second).Screenshot(false,&proto.PageCaptureScreenshot{Format:proto.PageCaptureScreenshotFormatPng})
+  quality := 70
+  data,err := s.page.Timeout(40*time.Second).Screenshot(false,&proto.PageCaptureScreenshot{Format:proto.PageCaptureScreenshotFormatJpeg, Quality:&quality, FromSurface:true, OptimizeForSpeed:true})
   if err != nil { consoleError(c,504,"获取画面超时；请手动刷新"); return }
-  c.Data(200,"image/png",data)
+  c.Data(200,"image/jpeg",data)
  })
  api.POST("/action",func(c *gin.Context) {
   c.Request.Body = http.MaxBytesReader(c.Writer,c.Request.Body,4096)

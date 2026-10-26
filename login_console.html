@@ -41,7 +41,7 @@ const $=id=>document.getElementById(id);
 let session='',secret='',busy=false,phase='idle',imageURL='',lastFrame=0;
 function controls(){const ready=phase==='ready'&&!busy;['refresh','send','save','up','down'].forEach(id=>$(id).disabled=!ready);document.querySelectorAll('[data-key]').forEach(b=>b.disabled=!ready);$('close').disabled=busy||!session||phase==='starting';$('start').disabled=busy||phase==='starting'||phase==='ready';}
 async function request(path,body){
- const res=await fetch('/api/v1/login-console'+path,{method:body===undefined?'GET':'POST',headers:{'Authorization':'Bearer '+secret,'X-Login-Session':session,...(body===undefined?{}:{'Content-Type':'application/json'})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal:AbortSignal.timeout(25000)});
+ const res=await fetch('/api/v1/login-console'+path,{method:body===undefined?'GET':'POST',headers:{'Authorization':'Bearer '+secret,'X-Login-Session':session,...(body===undefined?{}:{'Content-Type':'application/json'})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal:AbortSignal.timeout(55000)});
  if(!res.ok){let d;try{d=await res.json()}catch{}throw Error(d?.error||'请求失败 HTTP '+res.status)}
  return path==='/frame'?res.blob():res.json();
 }
