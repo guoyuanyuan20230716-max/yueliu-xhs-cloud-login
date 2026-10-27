@@ -3,9 +3,9 @@ WORKDIR /src
 # Pin the same upstream revision that was validated on the initial Render service.
 RUN git init . && git remote add origin https://github.com/xpzouying/xiaohongshu-mcp.git && \
     git fetch --depth=1 origin 7797fd375aba02dcd33afe143f6bee13e5870859 && git checkout --detach FETCH_HEAD
-COPY login_console.go login_console.html login_console_test.go ./
+COPY login_console.go login_console.html login_console_test.go reader.go reader.html reader_test.go ./
 RUN sed -i '/router.GET("\/health", healthHandler)/a\ registerLoginConsole(router, appServer)' routes.go && \
-    gofmt -w login_console.go login_console_test.go routes.go && \
+    gofmt -w login_console.go login_console_test.go reader.go reader_test.go routes.go && \
     go test . -run '^TestConsole' -count=1 && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w -X main.version=yueliu-login-1' -o /out/app .
 

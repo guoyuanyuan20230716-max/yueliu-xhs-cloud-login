@@ -147,6 +147,7 @@ func registerLoginConsole(router *gin.Engine, app *AppServer) {
   if err := saveCookies(p); err != nil { consoleError(c,500,"登录已完成，但保存失败，请重试保存"); return }
   s.endLocked("saved"); s.note = "已确认登录并保存到云端"; c.JSON(200,s.stateLocked())
  })
+ registerReader(router, appServer, s)
  // Avoid creating additional browsers through the old API during verification.
  router.Use(func(c *gin.Context) {
   if !s.mu.TryLock() { consoleError(c,409,"登录操作进行中，请稍后重试"); c.Abort(); return }

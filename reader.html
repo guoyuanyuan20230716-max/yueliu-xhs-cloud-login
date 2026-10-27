@@ -1,0 +1,19 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>阅流 · 云端推荐</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#182432;font:16px/1.6 system-ui,sans-serif}main{max-width:880px;margin:auto;padding:24px}h1{margin:0;font-size:30px}p{color:#536477}section,article{background:#fff;border:1px solid #d9e0e7;border-radius:12px;padding:18px;margin:14px 0}input,button{font:inherit;padding:10px;border:1px solid #bac6d1;border-radius:8px;max-width:100%}button{cursor:pointer;background:#135b75;color:white}button:disabled{opacity:.5}a{color:#135b75}article a{font-size:19px;text-decoration:none;font-weight:600}small{display:block;color:#647483}#error{color:#a04415}nav{display:flex;flex-wrap:wrap;gap:10px;align-items:center}input{min-width:0;width:100%}label{display:block;margin:10px 0}#status{white-space:pre-line}@media(max-width:480px){main{padding:16px}section,article{padding:14px}}</style>
+<main><h1>阅流</h1><p>你的云端小红书推荐。手机和电脑查看同一份更新。</p>
+<section id="access"><label>服务访问密钥<input id="key" type="password" autocomplete="off"></label><button id="connect">打开推荐</button><p>密钥仅保留在此页面内存中，关闭或刷新后需重新输入。</p></section>
+<section><nav><button id="refresh" disabled>刷新列表</button><button id="sync" disabled>同步新推荐</button><button id="logout" disabled>退出阅读</button><a href="/login-console">云端登录</a></nav><p id="status" role="status">尚未连接</p><p id="error" role="alert"></p></section>
+<div id="items"></div></main>
+<script>
+const $=id=>document.getElementById(id);let key='',busy=false,connected=false;
+function controls(){for(const id of ['refresh','sync','logout'])$(id).disabled=busy||!connected;$('connect').disabled=busy}
+async function api(path='',method='GET'){const r=await fetch('/api/v1/reader'+path,{method,headers:{Authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(20000)});let d;try{d=await r.json()}catch{}if(!r.ok)throw Error(d?.error||(r.status===401?'密钥不正确':'连接失败 HTTP '+r.status));return d}
+function render(d){$('items').replaceChildren();for(const item of d.items||[]){const article=document.createElement('article'),a=document.createElement('a'),small=document.createElement('small');let u;try{u=new URL(item.url)}catch{continue}if(u.protocol!=='https:'||u.hostname!=='www.xiaohongshu.com')continue;a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent=item.title;small.textContent=(item.author||'小红书')+' · '+new Date(item.seen_at).toLocaleString();article.append(a,small);$('items').append(article)}const updated=d.updated_at&&!d.updated_at.startsWith('0001')?new Date(d.updated_at).toLocaleString():'尚无成功同步';$('status').textContent=`共 ${(d.items||[]).length} 条推荐 · 最近成功同步：${updated}\n${d.running?'正在云端同步…':d.automatic?'云端每小时自动同步':'自动同步未启用，可手动同步'}`;$('error').textContent=d.error||''}
+async function run(fn){if(busy)return;busy=true;controls();$('error').textContent='';try{await fn()}catch(e){$('error').textContent=e.message}finally{busy=false;controls()}}
+async function refresh(){const d=await api();connected=true;$('access').hidden=true;render(d)}
+$('connect').onclick=()=>run(async()=>{key=$('key').value.trim();if(!key)throw Error('请输入密钥');await refresh();$('key').value='' });
+$('refresh').onclick=()=>run(refresh);$('sync').onclick=()=>run(async()=>{await api('/sync','POST');await refresh()});
+$('logout').onclick=()=>{key='';connected=false;$('items').replaceChildren();$('access').hidden=false;$('status').textContent='已退出';$('error').textContent='';controls()};
+setInterval(()=>{if(connected&&!document.hidden)run(refresh)},15000);
+window.addEventListener('pagehide',()=>{key='';$('items').replaceChildren()});
+</script></html>
